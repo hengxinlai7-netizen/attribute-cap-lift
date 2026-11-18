@@ -1,0 +1,41 @@
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
+license="${mod_license}"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+authors="${mod_authors}"
+description='''
+${mod_description}
+
+- 读值侧:watchedAttributes(默认只有 movement_speed)的 getValue() 返回"未 clamp"的值(2.23),
+  供疾行项链/光速螺旋桨这类"数值转加成"的饰品使用
+- 移动侧:LivingEntity 的 travel / getFrictionInfluencedSpeed / getFlyingSpeed 里把速度压回
+  属性自己的 maxValue(AttributeFix 的 0.5),玩家真的跑不快
+- 不改 RangedAttribute.maxValue,不依赖 AttributeFix(没装时 maxValue 是原版值,自然不回落)
+- 配置:config/attributecaplift-common.toml
+'''
+
+[[dependencies.${mod_id}]]
+    modId="forge"
+    mandatory=true
+    versionRange="${forge_version_range}"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="BOTH"
+
+# AttributeFix 是可选前置:没有它时"上限"就是原版值,本模组只是不 clamp 读值
+[[dependencies.${mod_id}]]
+    modId="attributefix"
+    mandatory=false
+    versionRange="[21,)"
+    ordering="NONE"
+    side="BOTH"
