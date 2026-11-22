@@ -35,11 +35,13 @@ public final class CapConfig {
     public static final ForgeConfigSpec.BooleanValue ENABLED;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> WATCHED_ATTRIBUTES;
     public static final ForgeConfigSpec.BooleanValue CLAMP_IN_TRAVEL;
+    public static final ForgeConfigSpec.BooleanValue PANEL_CLAMP;
     public static final ForgeConfigSpec.BooleanValue DEBUG_LOG;
 
     /** 热路径缓存。 */
     private static volatile boolean enabled = true;
     private static volatile boolean clampInTravel = true;
+    private static volatile boolean panelClamp = true;
     private static volatile boolean debug = false;
 
     /** watchedAttributes 解析成 Attribute 身份集合;懒加载,配置重载时清空。 */
@@ -48,6 +50,7 @@ public final class CapConfig {
     /** 自检/基准测试用的临时覆盖(null = 正常读配置)。 */
     private static volatile Boolean testEnabled;
     private static volatile Boolean testClampInTravel;
+    private static volatile Boolean testPanelClamp;
 
     static {
         ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
@@ -71,6 +74,11 @@ public final class CapConfig {
 
         DEBUG_LOG = b.comment("打印每次'读值未 clamp'和'移动回落'的样本(节流,最多几十行)。默认 false。")
                 .define("debugLog", false);
+
+        PANEL_CLAMP = b.comment("数值面板(ApothicAttributes 的属性页)是否显示'被上限压过'的值。默认 true。",
+                        "只影响显示:玩法逻辑仍然读未 clamp 的 raw 值。",
+                        "关掉 = 面板显示 raw(和 2.0.0 之前的行为一致)。")
+                .define("panelClamp", true);
 
         b.pop();
         SPEC = b.build();
@@ -97,6 +105,12 @@ public final class CapConfig {
     public static boolean clampInTravel() {
         Boolean o = testClampInTravel;
         return o != null ? o : clampInTravel;
+    }
+
+    /** 数值面板是否按属性修复的上限显示(只影响 UI 显示)。 */
+    public static boolean panelClamp() {
+        Boolean o = testPanelClamp;
+        return o != null ? o : panelClamp;
     }
 
     public static boolean debugLog() {
@@ -141,6 +155,7 @@ public final class CapConfig {
         try {
             enabled = ENABLED.get();
             clampInTravel = CLAMP_IN_TRAVEL.get();
+            panelClamp = PANEL_CLAMP.get();
             debug = DEBUG_LOG.get();
         }
         catch (RuntimeException | LinkageError e) {
@@ -157,6 +172,11 @@ public final class CapConfig {
     public static void setTestOverrides(Boolean enabledOverride, Boolean clampOverride) {
         testEnabled = enabledOverride;
         testClampInTravel = clampOverride;
+    }
+
+    /** 自检用:临时覆盖 panelClamp(传 null 恢复)。 */
+    public static void setTestPanelClamp(Boolean override) {
+        testPanelClamp = override;
     }
 
     public static List<String> watchedIds() {

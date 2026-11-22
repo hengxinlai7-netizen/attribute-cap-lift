@@ -88,3 +88,21 @@ Set-Location "$ws\attribute-cap-lift"
 
 服务端加 `-Dattributecaplift.selftest=true` 会跑 `com.hengx.attributecaplift.test.SelfTest`
 （100 只僵尸、分阶段测读值/位移/MSPT）。正常游戏不会触发。
+
+## 数值面板显示（2.1.0 新增）
+
+`AttributeInstance#getValue()` 的解除上限是**全局**的，所以神化（ApothicAttributes）的属性面板
+`AttributesGui` 过去显示的是"解除后"的原始值（例如移速 2.23），而不是玩家实际生效的上限（0.5）。
+
+2.1.0 起，面板显示**按属性修复的上限压过**的值，玩法逻辑不变（战斗/移动仍读解除后的值）：
+
+- 新增配置 `panelClamp`（默认 `true`）：`config/attributecaplift-common.toml` → `[general] panelClamp`
+- 实现：`mixin/ApothAttributesGuiClampMixin`，对 `AttributesGui` 里 8 处
+  `AttributeInstance#getValue()` 调用点做 `@Redirect`（`render` / `renderEntry` / `filter` 三个方法），
+  只改显示，不改 `getValue` 本身
+- 可选依赖：`attributecaplift.optional.mixins.json`（`required: false` + 每处 `require = 0`），
+  没装 ApothicAttributes 时静默跳过
+
+### 2.1.0
+* 新增配置 panelClamp（默认 true）：神化（ApothicAttributes）的属性面板按「属性修复的上限」显示，
+  不再显示解除上限后的原始值；玩法逻辑不变，仍使用解除后的值。

@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.hengx.attributecaplift.CapConfig;
+import com.hengx.attributecaplift.PanelClamp;
 import com.hengx.attributecaplift.TravelCap;
 import com.hengx.attributecaplift.UncappedAttributes;
 
@@ -72,11 +73,65 @@ public final class SelfTest {
     private SelfTest() {
     }
 
+    /**
+     * 面板 clamp 的四条断言(纯逻辑,不需要真的开 GUI)。
+     *
+     * <p>覆盖 {@link com.hengx.attributecaplift.PanelClamp#clamp} 的全部分支:
+     * 关开关 → raw;raw 超上限 → max;raw 未超 → raw;非 watched → 原值。</p>
+     */
+    private static void panelClampChecks() {
+        int pass = 0;
+        int fail = 0;
+        double raw = 2.23D;
+        double max = 0.5D;
+
+        // 1) panelClamp=false → 显示 raw
+        double v1 = PanelClamp.clamp(true, false, true, true, raw, max);
+        pass += v1 == raw ? 1 : 0;
+        fail += v1 == raw ? 0 : 1;
+        LOG.info("SELFTEST PANEL 1: panelClamp=false -> {} (expect {}) {}", v1, raw, v1 == raw ? "PASS" : "FAIL");
+
+        // 2) panelClamp=true 且 raw > max → 显示 max
+        double v2 = PanelClamp.clamp(true, true, true, true, raw, max);
+        pass += v2 == max ? 1 : 0;
+        fail += v2 == max ? 0 : 1;
+        LOG.info("SELFTEST PANEL 2: panelClamp=true raw({})>max({}) -> {} (expect {}) {}",
+                raw, max, v2, max, v2 == max ? "PASS" : "FAIL");
+
+        // 3) panelClamp=true 且 raw <= max → 显示 raw
+        double low = 0.3D;
+        double v3 = PanelClamp.clamp(true, true, true, true, low, max);
+        pass += v3 == low ? 1 : 0;
+        fail += v3 == low ? 0 : 1;
+        LOG.info("SELFTEST PANEL 3: panelClamp=true raw({})<=max({}) -> {} (expect {}) {}",
+                low, max, v3, low, v3 == low ? "PASS" : "FAIL");
+
+        // 4) 非 watched 属性 → 原值
+        double v4 = PanelClamp.clamp(true, true, false, true, raw, max);
+        pass += v4 == raw ? 1 : 0;
+        fail += v4 == raw ? 0 : 1;
+        LOG.info("SELFTEST PANEL 4: 非 watched -> {} (expect {}) {}", v4, raw, v4 == raw ? "PASS" : "FAIL");
+
+        // 5) 配置联动:testPanelClamp=false 时 CapConfig.panelClamp() 必须读到 false
+        CapConfig.setTestPanelClamp(Boolean.FALSE);
+        boolean cfgOff = !CapConfig.panelClamp();
+        CapConfig.setTestPanelClamp(Boolean.TRUE);
+        boolean cfgOn = CapConfig.panelClamp();
+        CapConfig.setTestPanelClamp(null);
+        pass += cfgOff && cfgOn ? 1 : 0;
+        fail += cfgOff && cfgOn ? 0 : 1;
+        LOG.info("SELFTEST PANEL 5: CapConfig.panelClamp() override off={} on={} {}",
+                cfgOff, cfgOn, cfgOff && cfgOn ? "PASS" : "FAIL");
+
+        LOG.info("SELFTEST PANEL RESULT: PASSED={} FAILED={}", pass, fail);
+    }
+
     public static void start(MinecraftServer server) {
         if (active) {
             return;
         }
         active = true;
+        panelClampChecks();
         level = server.overworld();
         level.setDayTime(18000L); // 夜里,僵尸不会烧起来
         level.getGameRules().getRule(GameRules.RULE_MAX_ENTITY_CRAMMING).set(0, server);

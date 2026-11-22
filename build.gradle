@@ -62,6 +62,9 @@ repositories {
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
 
+    // 可选前置:仅编译期(给 optional mixin 的 @Mixin(targets=...) 注解处理器提供目标类)。
+    compileOnly fileTree(dir: 'libs', include: ['*.jar'])
+
     // Mixin 注解处理器(编译期校验 @Mixin/@Accessor 目标 + 生成 SRG refmap)
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 }
@@ -112,7 +115,7 @@ tasks.named('jar', Jar).configure {
                 'Implementation-Vendor'   : mod_authors,
                 'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
                 // Forge 从 MANIFEST 的这个属性加载 mixin 配置
-                'MixinConfigs'            : 'attributecaplift.mixins.json'
+                'MixinConfigs'            : 'attributecaplift.mixins.json,attributecaplift.optional.mixins.json'
         ])
     }
     finalizedBy 'reobfJar'
