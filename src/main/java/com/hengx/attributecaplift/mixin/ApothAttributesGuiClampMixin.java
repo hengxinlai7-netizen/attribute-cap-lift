@@ -17,24 +17,21 @@ import com.hengx.attributecaplift.CapConfig;
 /**
  * 让神化(ApothicAttributes)的属性面板 + tooltip 显示"被属性上限压过"的值。
  *
- * <h2>2.1.0 为什么没生效(两个独立的错)</h2>
+ * <h2>历次踩坑记录</h2>
  * <ol>
- *   <li><b>方法名错了</b>:2.1.0 写的是 {@code m_88315_} / {@code lambda$refreshData$1},
- *       而 1.3.7 实际是 {@code renderTooltip}(3 处)/ {@code renderEntry}(4 处)/
- *       {@code lambda$refreshData$2}(1 处)—— 且 tooltip 那 3 处完全没覆盖,
- *       所以面板里「当前 / 基础值 / 最小值 / 最大值」仍显示 raw;</li>
- *   <li><b>目标描述符错了</b>:{@code AttributesGui} 是第三方模组类,它字节码里对原版方法的调用写的是
- *       <b>SRG 名</b> {@code m_22135_};而 2.1.0 写的是 {@code getValue()} + {@code remap = false},
- *       Mixin 按字面匹配 ⇒ 一条都匹配不到,{@code require = 0} 又让它静默跳过。</li>
+ *   <li><b>2.1.0</b>:方法名错({@code m_88315_} / {@code lambda$refreshData$1} 不存在,
+ *       且没覆盖 {@code renderTooltip});</li>
+ *   <li><b>2.1.1</b>:方法名对了,但三个 handler 写成 {@code private static} ——
+ *       {@code @Redirect} 的 handler 修饰符必须与<b>宿主方法</b>一致,而
+ *       {@code renderEntry} / {@code renderTooltip} / {@code lambda$refreshData$2}
+ *       都是<b>实例方法</b>,于是 {@code Mixin apply failed: 'static' modifier of handler method
+ *       does not match target} —— 这条是硬校验,{@code require = 0} 挡不住;</li>
+ *   <li><b>2.1.2</b>(本版):三个 handler 改为<b>实例方法</b>,{@link #clampForDisplay} 保持 static。</li>
  * </ol>
  *
- * <h2>2.1.1 的写法</h2>
- * 三个方法各一个 {@code @Redirect},{@code target} 直接用 SRG 描述符
- * {@code Lnet/minecraft/world/entity/ai/attributes/AttributeInstance;m_22135_()D}
- * (与方法体内的字节码逐字一致),{@code remap = false} 保持不变。
- *
- * <p>安全性:目标类不在编译期依赖里({@code targets} 用字符串),没装 ApothicAttributes 时
- * 整个 optional 配置被跳过;即使装了但版本不同,每个注入点 {@code require = 0} 也不会崩。</p>
+ * <h2>选择器</h2>
+ * {@code AttributesGui} 是第三方类,字节码里调用原版方法写的是 <b>SRG 名</b>
+ * {@code m_22135_},所以 {@code @At} 的 target 用 SRG 描述符,{@code remap = false} 保持字面匹配。
  */
 @Mixin(targets = "dev.shadowsoffire.attributeslib.client.AttributesGui", remap = false)
 public final class ApothAttributesGuiClampMixin {
@@ -53,40 +50,40 @@ public final class ApothAttributesGuiClampMixin {
     private ApothAttributesGuiClampMixin() {
     }
 
-    /** 面板主行:单行条目的数值(4 处调用点)。 */
+    /** 面板主行:单行条目的数值(4 处调用点)。<b>实例方法</b>——宿主 {@code renderEntry} 是实例方法。 */
     @Redirect(
             method = "renderEntry",
             at = @At(value = "INVOKE", target = GET_VALUE_SRG),
             remap = false,
             require = 0)
-    private static double attributecaplift$clampInEntry(AttributeInstance instance) {
+    private double attributecaplift$clampInEntry(AttributeInstance instance) {
         return clampForDisplay(instance);
     }
 
-    /** tooltip:「当前 / 基础值 / 最小值 / 最大值」(3 处调用点)。 */
+    /** tooltip:「当前 / 基础值 / 最小值 / 最大值」(3 处调用点)。<b>实例方法</b>。 */
     @Redirect(
             method = "renderTooltip",
             at = @At(value = "INVOKE", target = GET_VALUE_SRG),
             remap = false,
             require = 0)
-    private static double attributecaplift$clampInTooltip(AttributeInstance instance) {
+    private double attributecaplift$clampInTooltip(AttributeInstance instance) {
         return clampForDisplay(instance);
     }
 
-    /** 「只显示变化过的」过滤条件(1 处调用点)。 */
+    /** 「只显示变化过的」过滤条件(1 处调用点)。<b>实例方法</b>。 */
     @Redirect(
             method = "lambda$refreshData$2",
             at = @At(value = "INVOKE", target = GET_VALUE_SRG),
             remap = false,
             require = 0)
-    private static double attributecaplift$clampInFilter(AttributeInstance instance) {
+    private double attributecaplift$clampInFilter(AttributeInstance instance) {
         return clampForDisplay(instance);
     }
 
     /**
      * 三个重定向共用:读数 → 必要时按 {@code maxValue} 压一次 → 返回显示值。
      *
-     * <p>{@code debugLog = true} 时每 5 秒最多打一条,这是"注入确实生效"的唯一运行时证据。</p>
+     * <p>这个方法本身是 {@code static},它只是被三个实例 handler 调用,不参与 Mixin 的修饰符校验。</p>
      */
     private static double clampForDisplay(AttributeInstance instance) {
         double raw = instance.getValue();
