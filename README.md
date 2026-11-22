@@ -103,6 +103,15 @@ Set-Location "$ws\attribute-cap-lift"
 - 可选依赖：`attributecaplift.optional.mixins.json`（`required: false` + 每处 `require = 0`），
   没装 ApothicAttributes 时静默跳过
 
+### 2.2.0
+
+**正式版：数值面板兼容神化（ApothicAttributes）**
+
+* 神化属性面板与 tooltip 现在显示**按属性修复上限压过**的值（`0.5`），不再显示解除上限后的原始值；
+  玩法逻辑不变（战斗/移动仍读解除后的值）。
+* 覆盖 `AttributesGui` 的 8 处读值：`renderEntry`(4) / `renderTooltip`(3) / `lambda$refreshData$2`(1)。
+* 注入点用 SRG 描述符 `AttributeInstance.m_22135_()D` 精确匹配；handler 为实例方法（与宿主方法修饰符一致）。
+* 新增配置 `panelClamp`（默认 `true`），关掉即恢复显示原始值。
 ### 2.1.0
 * 新增配置 panelClamp（默认 true）：神化（ApothicAttributes）的属性面板按「属性修复的上限」显示，
   不再显示解除上限后的原始值；玩法逻辑不变，仍使用解除后的值。
